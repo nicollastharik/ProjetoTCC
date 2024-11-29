@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serviços</title>
+    <link rel="stylesheet" href="styles3.css" />
+    <style>
+        .service-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .service-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .service-header img {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .service-user-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .service-user-name {
+            font-weight: bold;
+        }
+        .service-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .service-description {
+            margin-bottom: 10px;
+        }
+        .service-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+        .action-button {
+            padding: 8px 16px;
+            background-color: #f0f2f5;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #65676B;
+            display: flex;
+            align-items: center;
+        }
+        .action-button:hover {
+            background-color: #e4e6e9;
+        }
+        .action-icon {
+            margin-right: 5px;
+        }
+
+        .comentarios-section {
+            margin-top: 15px;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .novo-comentario {
+            margin-top: 10px;
+        }
+
+        .novo-comentario textarea {
+            width: 100%;
+            min-height: 60px;
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+
+        .novo-comentario button {
+            padding: 8px 16px;
+            background-color: #1877f2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .comentario {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 10px;
+            background-color: white;
+            border-radius: 4px;
+        }
+
+        .comentario small {
+            color: #666;
+            font-size: 0.8em;
+            display: block;
+            margin-top: 5px;
+        }
+
+        #debug-info {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            font-family: monospace;
+            max-width: 300px;
+            max-height: 200px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-content">
+            <div class="logo">Serviços</div>
+            <a href="postar.php"><button>Postar</button></a>
+            <a href="gerenciar.php"><button>Gerenciar</button></a>
+            <a href="index2.html"><button>Voltar</button></a>
+            
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <main class="feed">
+            <div id="serviceFeed">
+                <!-- Os serviços serão adicionados aqui -->
+            </div>
+        </main>
+    </div>
+
+    <div id="debug-info"></div>
+
+    <script>
+        function debug(message) {
+            const debugDiv = document.getElementById('debug-info');
+            const time = new Date().toLocaleTimeString();
+            
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+            console.log(`[${time}] ${message}`);
+        }
+
+        function displayServices() {
+            debug('Carregando serviços...');
+            const serviceFeed = document.getElementById('serviceFeed');
+            serviceFeed.innerHTML = '';
+    
+            fetch('get_services.php')
+                .then(response => response.json())
+                .then(services => {
+                    debug(`Recebidos ${services.length} serviços`);
+                    services.forEach(service => {
+                        const serviceElement = document.createElement('div');
+                        serviceElement.className = 'service-item';
+                        serviceElement.id = `service-${service.id}`;
+                        serviceElement.innerHTML = `
+                            <div class="service-header">
+                                <img src="${service.userImage || 'placeholder.jpg'}" alt="${service.user}" onerror="this.src='placeholder.jpg'">
+                                <div class="service-user-info">
+                                    <div class="service-user-name">${service.user}</div>
+                                    <div>Oferece serviço</div>
+                                </div>
+                            </div>
+                            <div class="service-title">${service.title}</div>
+                            <div class="service-description">${service.description}</div>
+                            <div><strong>Área:</strong> ${service.area}</div>
+                            <div><strong>Preço:</strong> R$ ${service.price}</div>
+                            <div><strong>Contato:</strong> ${service.contact}</div>
+                            <div class="service-actions">
+                                <button class="action-button like-button" onclick="avaliarServico(${service.id})">
+                                    <span class="action-icon">👍</span> Curtir (<span class="likes-count">0</span>)
+                                </button>
+                                <button class="action-button" onclick="mostrarCaixaComentario(${service.id})">
+                                    <span class="action-icon">💬</span> Comentar
+                                </button>
+                            </div>
+                            <div class="comentarios-section" id="comentarios-${service.id}" style="display: none;">
+                                <div class="comentarios-lista" id="lista-comentarios-${service.id}"></div>
+                                <div class="novo-comentario">
+                                    <textarea placeholder="Escreva seu comentário..." id="comentario-${service.id}"></textarea>
+                                    <button onclick="enviarComentario(${service.id})">Enviar</button>
+                                </div>
+                            </div>
+                        `;
+                        serviceFeed.appendChild(serviceElement);
+                        carregarComentarios(service.id);
+                        atualizarContadorLikes(service.id);
+                    });
+                })
+                .catch(error => {
+                    debug(`Erro ao carregar serviços: ${error.message}`);
+                    console.error('Erro ao carregar serviços:', error);
+                });
+        }
+    
+        function mostrarCaixaComentario(serviceId) {
+            debug(`Alternando visualização dos comentários para serviço ${serviceId}`);
+            const comentariosSection = document.getElementById(`comentarios-${serviceId}`);
+            comentariosSection.style.display = comentariosSection.style.display === 'none' ? 'block' : 'none';
+            if (comentariosSection.style.display === 'block') {
+                carregarComentarios(serviceId);
+            }
+        }
+    
+        function enviarComentario(serviceId) {
+            debug(`Tentando enviar comentário para serviço ${serviceId}`);
+            const comentario = document.getElementById(`comentario-${serviceId}`).value;
+            if (!comentario.trim()) {
+                debug('Comentário vazio, ignorando');
+                return;
+            }
+    
+            fetch('salvar_comentario.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    service_id: serviceId,
+                    comentario: comentario
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    debug('Comentário salvo com sucesso');
+                    document.getElementById(`comentario-${serviceId}`).value = '';
+                    carregarComentarios(serviceId);
+                } else {
+                    debug(`Erro ao salvar comentário: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                debug(`Erro ao enviar comentário: ${error.message}`);
+                console.error('Erro ao enviar comentário:', error);
+            });
+        }
+    
+        function carregarComentarios(serviceId) {
+            debug(`Carregando comentários para serviço ${serviceId}`);
+            fetch(`get_comentarios.php?service_id=${serviceId}`)
+                .then(response => response.json())
+                .then(comentarios => {
+                    debug(`Recebidos ${comentarios.length} comentários`);
+                    const listaComentarios = document.getElementById(`lista-comentarios-${serviceId}`);
+                    listaComentarios.innerHTML = comentarios.map(c => `
+                        <div class="comentario">
+                            <strong>${c.usuario_nome}</strong>
+                            <p>${c.comentario}</p>
+                            <small>${c.data_comentario}</small>
+                        </div>
+                    `).join('');
+                })
+                .catch(error => {
+                    debug(`Erro ao carregar comentários: ${error.message}`);
+                    console.error('Erro ao carregar comentários:', error);
+                });
+        }
+    
+        function avaliarServico(serviceId) {
+            debug(`Tentando avaliar serviço ${serviceId}`);
+            fetch('salvar_avaliacao.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    service_id: serviceId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    debug('Avaliação salva com sucesso');
+                    atualizarContadorLikes(serviceId);
+                } else {
+                    debug(`Erro ao salvar avaliação: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                debug(`Erro ao avaliar serviço: ${error.message}`);
+                console.error('Erro ao avaliar serviço:', error);
+            });
+        }
+    
+        function atualizarContadorLikes(serviceId) {
+            debug(`Atualizando contador de likes para serviço ${serviceId}`);
+            fetch(`get_avaliacoes.php?service_id=${serviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const contadorElement = document.querySelector(`#service-${serviceId} .likes-count`);
+                    if (contadorElement) {
+                        contadorElement.textContent = data.count;
+                        debug(`Contador atualizado: ${data.count} likes`);
+                    }
+                })
+                .catch(error => {
+                    debug(`Erro ao atualizar contador: ${error.message}`);
+                    console.error('Erro ao atualizar contador:', error);
+                });
+        }
+    
+        window.onload = displayServices;
+    </script>
+</body>
+</html>
